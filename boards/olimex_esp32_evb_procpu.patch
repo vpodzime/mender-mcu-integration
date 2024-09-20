@@ -1,0 +1,50 @@
+diff --git a/boards/olimex/olimex_esp32_evb/olimex_esp32_evb-pinctrl.dtsi b/boards/olimex/olimex_esp32_evb/olimex_esp32_evb-pinctrl.dtsi
+index ef4238b3c9a..14937d36c62 100644
+--- a/boards/olimex/olimex_esp32_evb/olimex_esp32_evb-pinctrl.dtsi
++++ b/boards/olimex/olimex_esp32_evb/olimex_esp32_evb-pinctrl.dtsi
+@@ -47,6 +47,13 @@
+ 		};
+ 	};
+ 
++	mdio_default: mdio_default {
++		group1 {
++			pinmux = <SMI_MDC_GPIO23>,
++				 <SMI_MDIO_GPIO18>;
++		};
++	};
++
+ 	twai_default: twai_default {
+ 		group1 {
+ 			pinmux = <TWAI_TX_GPIO5>,
+diff --git a/boards/olimex/olimex_esp32_evb/olimex_esp32_evb_procpu.dts b/boards/olimex/olimex_esp32_evb/olimex_esp32_evb_procpu.dts
+index c239263ea53..d2858371e7e 100644
+--- a/boards/olimex/olimex_esp32_evb/olimex_esp32_evb_procpu.dts
++++ b/boards/olimex/olimex_esp32_evb/olimex_esp32_evb_procpu.dts
+@@ -89,6 +89,27 @@ uext_spi: &spi2 {};
+ 	#size-cells = <0>;
+ };
+ 
++&mdio {
++	pinctrl-0 = <&mdio_default>;
++	pinctrl-names = "default";
++
++	phy: ethernet-phy@0 {
++		compatible = "ethernet-phy";
++		status = "okay";
++		reg = <0>;
++	};
++    status = "okay";
++};
++
++&phy {
++       status = "okay";
++};
++
++&eth {
++	phy-handle = <&phy>;
++    status = "okay";
++};
++
+ &twai {
+ 	status = "okay";
+ 	pinctrl-0 = <&twai_default>;
