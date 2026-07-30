@@ -191,25 +191,22 @@ test:integration:
 
 publish:tests:
   stage: publish
-  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/python:3.11
+  image: registry.gitlab.com/northern.tech/mender/mender-test-containers/codecov:master
   dependencies:
     - test:integration
-  before_script:
-    # https://github.com/coverallsapp/coverage-reporter
-    - wget -qO- https://coveralls.io/coveralls-linux.tar.gz | tar xz -C /usr/local/bin
-  variables:
-    COVERALLS_PARALLEL: true
-    COVERALLS_FLAG_NAME: "integration-tests"
-    COVERALLS_SERVICE_NAME: "gitlab-ci"
-    COVERALLS_GIT_BRANCH: $PARENT_MENDER_MCU_COMMIT_BRANCH
-    COVERALLS_GIT_COMMIT: $MENDER_MCU_REVISION
-    COVERALLS_REPO_TOKEN: $MENDER_MCU_COVERALLS_TOKEN
   script:
     #  replace the path in the coverage file
     - sed -i "s;/zephyr-workspace-cache/modules/mender-mcu/;;g" tests/integration/coverage.lcov
-    - wget -qO- https://github.com/mendersoftware/mender-mcu/archive/${MENDER_MCU_REVISION}.tar.gz/ | tar xz
-    - cd mender-mcu-${MENDER_MCU_REVISION} && cp ../tests/integration/coverage.lcov .
-    - coveralls report --build-number $PARENT_MENDER_MCU_PIPELINE_ID
+    # The coverage belongs to mender-mcu, not to this repository, so the slug
+    # and commit are set explicitly rather than detected from the CI env, and
+    # CODECOV_TOKEN must hold mender-mcu's upload token.
+    - codecov upload-process
+      --fail-on-error
+      --git-service github
+      --slug mendersoftware/mender-mcu
+      --sha ${MENDER_MCU_REVISION}
+      --file tests/integration/coverage.lcov
+      --flag integration-tests
   rules:
     # Only publish coverage if the pipeline is triggered and the branch is protected
     - if: $CI_PIPELINE_SOURCE == "pipeline" && $CI_COMMIT_REF_PROTECTED == "true"
