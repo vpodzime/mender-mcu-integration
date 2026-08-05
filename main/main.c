@@ -85,7 +85,6 @@ app_main(void) {
         return;
     }
 
-    /* Not reached until MEN-9961 replaces the weak scheduler */
     ret = mender_client_activate();
     ESP_LOGI(TAG, "mender_client_activate returned %d", (int)ret);
 }
