@@ -27,6 +27,11 @@ static const unsigned char secondary_certificate[] = {
 #include "SecondaryCertificate.cer.inc"
 };
 #endif
+#ifdef CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_TERTIARY_ENABLED
+static const unsigned char tertiary_certificate[] = {
+#include "TertiaryCertificate.cer.inc"
+};
+#endif
 #endif
 
 int
@@ -41,6 +46,13 @@ certs_add_credentials(void) {
 #ifdef CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY_ENABLED
     ret = tls_credential_add(
         CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY, TLS_CREDENTIAL_CA_CERTIFICATE, secondary_certificate, sizeof(secondary_certificate));
+    if (ret != 0) {
+        return ret;
+    }
+#endif
+#ifdef CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_TERTIARY_ENABLED
+    ret = tls_credential_add(
+        CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_TERTIARY, TLS_CREDENTIAL_CA_CERTIFICATE, tertiary_certificate, sizeof(tertiary_certificate));
 #endif
 #endif
 

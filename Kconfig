@@ -32,6 +32,14 @@ endif # WIFI
 			When in combination with MENDER_SERVER_HOST_ON_PREM, the Mender Reference App
 			will add this credential as the MENDER_NET_CA_CERTIFICATE_TAG_PRIMARY.
 
+
+	config MENDER_APP_SECONDARY_SERVER_HOST_CERT
+		string "Path to the DER formatted secondary Mender host Certificate. Relative to mender-mcu-integration"
+		default ""
+		help
+			When in combination with !MENDER_SECONDARY_SERVER_HOST_DISABLE, the Mender Reference App
+			will add this credential as the MENDER_NET_CA_CERTIFICATE_TAG_TERTIARY.
+
 endmenu
 
 source "Kconfig.zephyr"

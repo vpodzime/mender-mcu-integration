@@ -96,4 +96,27 @@ if (SECONDARY_CERTIFICATE)
     )
 endif()
 
+if (NOT CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE)
+    if (NOT CONFIG_MENDER_APP_SECONDARY_SERVER_HOST_CERT STREQUAL "")
+        set(TERTIARY_CERTIFICATE "${CMAKE_CURRENT_SOURCE_DIR}/${CONFIG_MENDER_APP_SECONDARY_SERVER_HOST_CERT}")
+    else()
+        message(WARNING "Secondary/fallback server host enabled, but no extra certificate specified")
+    endif()
+endif()
+
+if (TERTIARY_CERTIFICATE)
+    if ((CONFIG_TLS_MAX_CREDENTIALS_NUMBER LESS 5) AND CONFIG_MENDER_SERVER_DORMANT_CERTIFICATES)
+        # Would be nice to have this as FATAL_ERROR, but that prevents even the menuconfig target from running
+        message(WARNING "TLS_MAX_CREDENTIALS_NUMBER set too low for all Mender certificates to be loaded, must be at least 5")
+    else()
+        add_custom_target(certificate_three DEPENDS ${TERTIARY_CERTIFICATE})
+        add_dependencies(app certificate_three)
+
+        generate_inc_file_for_target(certificate_three
+            ${TERTIARY_CERTIFICATE}
+            "${ZEPHYR_BINARY_DIR}/include/generated/TertiaryCertificate.cer.inc"
+        )
+    endif()
+endif()
+
 file(COPY_FILE "config-tls-mender.h" "${ZEPHYR_BINARY_DIR}/include/generated/config-tls-mender.h")
