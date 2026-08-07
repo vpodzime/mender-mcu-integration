@@ -77,3 +77,23 @@ def test_deployment_abort(server, get_build_dir, mac_address):
         logger.info("Deployment aborted")
     finally:
         device.stop()
+
+
+@pytest.mark.smoke
+def test_authenticate(server, get_build_dir, mac_address):
+    device = NativeSim(get_build_dir, stdout=True)
+    # Set host and tenant in the device
+    device.set_host(f"https://{server.host}")
+
+    # Temporary workaround for the PoC
+    device.set_tenant(server.get_tenant_token())
+    device.set_mac(mac_address)
+
+    try:
+        # Start device
+        device.start(pristine=True)
+        server.accept_device(mac_address)
+        device.status.is_authenticated(timeout=60)
+        logger.info("Authenticated")
+    finally:
+        device.stop()
