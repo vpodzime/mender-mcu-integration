@@ -19,6 +19,8 @@ import shutil
 import tempfile
 import subprocess
 import logging
+import queue
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +57,12 @@ class DeviceStatus:
 
 
 class NativeSim:
-    def __init__(self, build_dir, stdout=False):
+    def __init__(self, build_dir, log_stdout=True):
         self.tenant_token = "..."
         self.proc = None
-        self.stdout = stdout
+        self.log_stdout = log_stdout
+        self.log_lines = queue.Queue()
+        self._stdout_reader = None
 
         self.server_host = ""
         self.server_tenant = ""
@@ -125,6 +129,14 @@ class NativeSim:
                 command_output = " ".join(command)
                 pytest.fail(f"Failed to compile with command: {command_output}")
 
+    def _log_stdout_lines(self):
+        logger.info("Device stdout processing started")
+        for line in iter(self.proc.stdout.readline, ""):
+            logger.debug(line)
+            self.log_lines.put(line)
+
+        self.proc.stdout.close()
+
     def start(self, compile=True, pristine=False, extra_variables=None):
         if extra_variables is None:
             extra_variables = []
@@ -141,6 +153,10 @@ class NativeSim:
             text=True,
         )
         logger.info("Started device")
+
+        if self.log_stdout:
+            self._stdout_reader = threading.Thread(target=self._log_stdout_lines, daemon=True)
+            self._stdout_reader.start()
 
     def stop(self, stop_after=0):
         if self.proc is None:
