@@ -87,13 +87,20 @@ class NativeSim:
         self.mac_address = mac_address
 
     def compile(self, pristine=False, extra_variables=None):
+        if self.server_host == "https://hosted.mender.io":
+            extra_host_arg = "-DCONFIG_MENDER_SERVER_HOST_US=y"
+        elif self.server_host == "https://eu.hosted.mender.io":
+            extra_host_arg = "-DCONFIG_MENDER_SERVER_HOST_EU=y"
+        else:
+            extra_host_arg = "-DCONFIG_MENDER_SERVER_HOST_ON_PREM=y"
+
         if extra_variables is None:
             extra_variables = []
         if compile:
             variables = [
                 "-DCONFIG_COVERAGE=y",
                 "-DBUILD_INTEGRATION_TESTS=ON",
-                f'-DCONFIG_MENDER_SERVER_HOST="{self.server_host}"',
+                f'-DCONFIG_MENDER_SERVER_HOST="{self.server_host}"', extra_host_arg,
                 f'-DCONFIG_MENDER_SERVER_TENANT_TOKEN="{self.server_tenant}"',
             ] + extra_variables
             if self.mac_address:
