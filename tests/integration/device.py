@@ -96,45 +96,45 @@ class NativeSim:
 
         if extra_variables is None:
             extra_variables = []
-        if compile:
-            variables = [
-                "-DCONFIG_COVERAGE=y",
-                "-DBUILD_INTEGRATION_TESTS=ON",
-                f'-DCONFIG_MENDER_SERVER_HOST="{self.server_host}"', extra_host_arg,
-                f'-DCONFIG_MENDER_SERVER_TENANT_TOKEN="{self.server_tenant}"',
-            ] + extra_variables
-            if self.mac_address:
-                variables += [
-                    "-DCONFIG_ETH_NATIVE_TAP_RANDOM_MAC=n",
-                    f'-DCONFIG_ETH_NATIVE_TAP_MAC_ADDR="{self.mac_address}"',
-                ]
 
-            command = (
-                [
-                    "west",
-                    "build",
-                    "--board",
-                    "native_sim",
-                    WORKSPACE_DIRECTORY,
-                    "--build-dir",
-                    f"{self.build_dir}",
-                ]
-                + (["--pristine"] if pristine else [])
-                + [
-                    "--",
-                    "-DEXTRA_CONF_FILE="
-                    + f"{os.path.join(THIS_DIR, 'integration_tests.conf')}",
-                ]
-                + variables
-            )
+        variables = [
+            "-DCONFIG_COVERAGE=y",
+            "-DBUILD_INTEGRATION_TESTS=ON",
+            f'-DCONFIG_MENDER_SERVER_HOST="{self.server_host}"', extra_host_arg,
+            f'-DCONFIG_MENDER_SERVER_TENANT_TOKEN="{self.server_tenant}"',
+        ] + extra_variables
+        if self.mac_address:
+            variables += [
+                "-DCONFIG_ETH_NATIVE_TAP_RANDOM_MAC=n",
+               f'-DCONFIG_ETH_NATIVE_TAP_MAC_ADDR="{self.mac_address}"',
+            ]
 
-            try:
-                # Don't log stdout - as it contains the tenant token
-                subprocess.check_call(command, stdout=subprocess.DEVNULL)
-            except subprocess.CalledProcessError as result:
-                logger.error(result.stderr)
-                command_output = " ".join(command)
-                pytest.fail(f"Failed to compile with command: {command_output}")
+        command = (
+            [
+                "west",
+                "build",
+                "--board",
+                "native_sim",
+                WORKSPACE_DIRECTORY,
+                "--build-dir",
+                f"{self.build_dir}",
+            ]
+            + (["--pristine"] if pristine else [])
+            + [
+                "--",
+                "-DEXTRA_CONF_FILE="
+                + f"{os.path.join(THIS_DIR, 'integration_tests.conf')}",
+            ]
+            + variables
+        )
+
+        try:
+            # Don't log stdout - as it contains the tenant token
+            subprocess.check_call(command, stdout=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as result:
+            logger.error(result.stderr)
+            command_output = " ".join(command)
+            pytest.fail(f"Failed to compile with command: {command_output}")
 
     def _log_stdout_lines(self):
         logger.info("Device stdout processing started")
