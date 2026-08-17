@@ -16,6 +16,7 @@ import os
 import random
 import string
 import tempfile
+import time
 import subprocess
 
 from os import path
@@ -51,8 +52,17 @@ def set_define(define_name, definition):
 
 
 def stdout(device):
-    line = device.log_lines.get()
-    return line
+    if device.output is None:
+        raise ValueError("Device has no output")
+
+    while True:
+        line = device.output.readline()
+        if line:
+            return line
+        if not device.is_running():
+            return device.output.read()
+        else:
+            time.sleep(0.1)
 
 
 # get_mender_artifact from testutils/common.py didn't support uncompressed artifacts

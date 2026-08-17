@@ -95,5 +95,9 @@ def test_authenticate(server, get_build_dir, mac_address):
         server.accept_device(mac_address)
         device.status.is_authenticated(timeout=60)
         logger.info("Authenticated")
+    except:
+        logger.debug("=== Device logs follow ===")
+        print(device.get_output())
+        logger.debug("=== end of device logs ===")
     finally:
         device.stop()

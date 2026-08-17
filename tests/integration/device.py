@@ -60,9 +60,9 @@ class NativeSim:
     def __init__(self, build_dir, log_stdout=True):
         self.tenant_token = "..."
         self.proc = None
-        self.log_stdout = log_stdout
-        self.log_lines = queue.Queue()
-        self._stdout_reader = None
+        self._log_stdout = log_stdout
+        self._output_file = None
+        self.output = None
 
         self.server_host = ""
         self.server_tenant = ""
@@ -136,34 +136,44 @@ class NativeSim:
             command_output = " ".join(command)
             pytest.fail(f"Failed to compile with command: {command_output}")
 
-    def _log_stdout_lines(self):
-        logger.info("Device stdout processing started")
-        for line in iter(self.proc.stdout.readline, ""):
-            logger.debug(line)
-            self.log_lines.put(line)
-
-        self.proc.stdout.close()
-
     def start(self, compile=True, pristine=False, extra_variables=None):
         if extra_variables is None:
             extra_variables = []
         if compile:
             self.compile(pristine=pristine, extra_variables=extra_variables)
 
-        self.proc = subprocess.Popen(
-            [
-                f"{self.build_dir}/zephyr/zephyr.exe",
-                f"--flash={self.build_dir}/flash.bin",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        if self._log_stdout:
+            self._output_file = f"{self.build_dir}/{os.getpid()}_{time.time_ns()}.out"
+            proc_output = open(self._output_file, "w")
+            self.output = open(self._output_file, "r")
+            self.proc = subprocess.Popen(
+                [
+                    f"{self.build_dir}/zephyr/zephyr.exe",
+                    f"--flash={self.build_dir}/flash.bin",
+                ],
+                stdout=proc_output,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        else:
+            self.proc = subprocess.Popen(
+                [
+                    f"{self.build_dir}/zephyr/zephyr.exe",
+                    f"--flash={self.build_dir}/flash.bin",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
         logger.info("Started device")
 
-        if self.log_stdout:
-            self._stdout_reader = threading.Thread(target=self._log_stdout_lines, daemon=True)
-            self._stdout_reader.start()
+    def is_running(self):
+        if not self.proc:
+            return False
+        try:
+            os.kill(self.proc.pid, 0)
+            return True
+        except:
+            return False
 
     def stop(self, stop_after=0):
         if self.proc is None:
@@ -179,3 +189,7 @@ class NativeSim:
 
     def clean_build(self):
         shutil.rmtree(self.build_dir)
+
+    def get_output(self):
+        with open(self._output_file, "r") as f:
+            return f.read()
