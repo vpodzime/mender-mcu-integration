@@ -189,6 +189,19 @@ test:integration:
     paths:
       - tests/integration/coverage.lcov
 
+test:smoke:eu-hosted:
+  extends: test:integration
+  variables:
+    TEST_AUTH_TOKEN: $EU_HOSTED_MENDER_TEST_ACCESS_TOKEN
+  script:
+    - cd /zephyr-workspace-cache
+    - west update --narrow -o=--depth=1 --path-cache /zephyr-workspace-cache
+    - cd modules/mender-mcu && git fetch mender ${MENDER_MCU_REVISION}
+    - git checkout FETCH_HEAD && cd -
+    - cd ${CI_PROJECT_DIR}/tests/integration
+    - pip install --ignore-installed --break-system-packages -r mender_server/backend/tests/requirements-integration.txt
+    - pytest --verbose --junitxml=results.xml --host eu.hosted.mender.io -m smoke
+
 publish:tests:
   stage: publish
   image: registry.gitlab.com/northern.tech/mender/mender-test-containers/codecov:master

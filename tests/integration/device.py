@@ -19,6 +19,8 @@ import shutil
 import tempfile
 import subprocess
 import logging
+import queue
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +57,12 @@ class DeviceStatus:
 
 
 class NativeSim:
-    def __init__(self, build_dir, stdout=False):
+    def __init__(self, build_dir, log_stdout=True):
         self.tenant_token = "..."
         self.proc = None
-        self.stdout = stdout
+        self._log_stdout = log_stdout
+        self._output_file = None
+        self.output = None
 
         self.server_host = ""
         self.server_tenant = ""
@@ -83,47 +87,54 @@ class NativeSim:
         self.mac_address = mac_address
 
     def compile(self, pristine=False, extra_variables=None):
+        if self.server_host == "https://hosted.mender.io":
+            extra_host_arg = "-DCONFIG_MENDER_SERVER_HOST_US=y"
+        elif self.server_host == "https://eu.hosted.mender.io":
+            extra_host_arg = "-DCONFIG_MENDER_SERVER_HOST_EU=y"
+        else:
+            extra_host_arg = "-DCONFIG_MENDER_SERVER_HOST_ON_PREM=y"
+
         if extra_variables is None:
             extra_variables = []
-        if compile:
-            variables = [
-                "-DCONFIG_COVERAGE=y",
-                "-DBUILD_INTEGRATION_TESTS=ON",
-                f'-DCONFIG_MENDER_SERVER_HOST="{self.server_host}"',
-                f'-DCONFIG_MENDER_SERVER_TENANT_TOKEN="{self.server_tenant}"',
-            ] + extra_variables
-            if self.mac_address:
-                variables += [
-                    "-DCONFIG_ETH_NATIVE_TAP_RANDOM_MAC=n",
-                    f'-DCONFIG_ETH_NATIVE_TAP_MAC_ADDR="{self.mac_address}"',
-                ]
 
-            command = (
-                [
-                    "west",
-                    "build",
-                    "--board",
-                    "native_sim",
-                    WORKSPACE_DIRECTORY,
-                    "--build-dir",
-                    f"{self.build_dir}",
-                ]
-                + (["--pristine"] if pristine else [])
-                + [
-                    "--",
-                    "-DEXTRA_CONF_FILE="
-                    + f"{os.path.join(THIS_DIR, 'integration_tests.conf')}",
-                ]
-                + variables
-            )
+        variables = [
+            "-DCONFIG_COVERAGE=y",
+            "-DBUILD_INTEGRATION_TESTS=ON",
+            f'-DCONFIG_MENDER_SERVER_HOST="{self.server_host}"', extra_host_arg,
+            f'-DCONFIG_MENDER_SERVER_TENANT_TOKEN="{self.server_tenant}"',
+        ] + extra_variables
+        if self.mac_address:
+            variables += [
+                "-DCONFIG_ETH_NATIVE_TAP_RANDOM_MAC=n",
+               f'-DCONFIG_ETH_NATIVE_TAP_MAC_ADDR="{self.mac_address}"',
+            ]
 
-            try:
-                # Don't log stdout - as it contains the tenant token
-                subprocess.check_call(command, stdout=subprocess.DEVNULL)
-            except subprocess.CalledProcessError as result:
-                logger.error(result.stderr)
-                command_output = " ".join(command)
-                pytest.fail(f"Failed to compile with command: {command_output}")
+        command = (
+            [
+                "west",
+                "build",
+                "--board",
+                "native_sim",
+                WORKSPACE_DIRECTORY,
+                "--build-dir",
+                f"{self.build_dir}",
+            ]
+            + (["--pristine"] if pristine else [])
+            + [
+                "--",
+                "-DEXTRA_CONF_FILE="
+                + f"{os.path.join(THIS_DIR, 'integration_tests.conf')}",
+            ]
+            + variables
+        )
+
+        try:
+            # Don't log stdout - as it contains the tenant token
+            subprocess.check_call(command, stdout=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as result:
+            logger.error(result.stderr)
+            command_output = " ".join(command)
+            pytest.fail(f"Failed to compile with command: {command_output}")
 
     def start(self, compile=True, pristine=False, extra_variables=None):
         if extra_variables is None:
@@ -131,16 +142,38 @@ class NativeSim:
         if compile:
             self.compile(pristine=pristine, extra_variables=extra_variables)
 
-        self.proc = subprocess.Popen(
-            [
-                f"{self.build_dir}/zephyr/zephyr.exe",
-                f"--flash={self.build_dir}/flash.bin",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        if self._log_stdout:
+            self._output_file = f"{self.build_dir}/{os.getpid()}_{time.time_ns()}.out"
+            proc_output = open(self._output_file, "w")
+            self.output = open(self._output_file, "r")
+            self.proc = subprocess.Popen(
+                [
+                    f"{self.build_dir}/zephyr/zephyr.exe",
+                    f"--flash={self.build_dir}/flash.bin",
+                ],
+                stdout=proc_output,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        else:
+            self.proc = subprocess.Popen(
+                [
+                    f"{self.build_dir}/zephyr/zephyr.exe",
+                    f"--flash={self.build_dir}/flash.bin",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
         logger.info("Started device")
+
+    def is_running(self):
+        if not self.proc:
+            return False
+        try:
+            os.kill(self.proc.pid, 0)
+            return True
+        except:
+            return False
 
     def stop(self, stop_after=0):
         if self.proc is None:
@@ -156,3 +189,7 @@ class NativeSim:
 
     def clean_build(self):
         shutil.rmtree(self.build_dir)
+
+    def get_output(self):
+        with open(self._output_file, "r") as f:
+            return f.read()

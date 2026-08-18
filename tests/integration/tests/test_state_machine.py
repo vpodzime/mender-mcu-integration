@@ -312,7 +312,7 @@ class TestStateMachineTransitions:
     def do_test(
         self, server, get_build_dir, mac_address, test_state_set, state_set_key
     ):
-        device = NativeSim(get_build_dir, stdout=True)
+        device = NativeSim(get_build_dir)
 
         state_set = test_state_set[state_set_key]
         successful_test = False
