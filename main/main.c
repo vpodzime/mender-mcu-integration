@@ -65,9 +65,7 @@ app_main(void) {
 
     /* Server host, tenant token, device type etc. come from the component
      * configuration, overridable with idf.py -D */
-    mender_client_config_t config = {
-        .update_poll_interval = 1800,
-    };
+    mender_client_config_t config = { 0 };
 
     ESP_LOGI(TAG, "Initializing Mender Client with:");
     ESP_LOGI(TAG, "   Identity:      '{\"%s\": \"%s\"}'", identity.name, identity.value);
