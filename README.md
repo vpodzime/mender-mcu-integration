@@ -9,8 +9,17 @@ across many devices.
 Mender provides modules to integrate with Real Time Operating Systems (RTOS). The code can be found
 in [`mender-mcu` repository](https://github.com/mendersoftware/mender-mcu/).
 
-This repository contains a reference project on how to integrate a user application with Mender OTA
-Zephyr Module, with configurations for some boards to choose from.
+This repository contains reference projects on how to integrate a user
+application with Mender OTA, with configurations for some boards to choose from.
+
+⚠️ **The repository uses branches for such reference projects specific to various
+operating systems and versions.** In particular:
+
+- the _main_ branch, for historical reasons, contains a Zephyr application,
+  loosely following Zephyr releases (see `west.yml`),
+- the _zephyr-4.2.x_ and similar branches contain versions targeting Zephyr
+  releases, and
+- the _esp-idf_ branch provides an ESP-IDF reference project.
 
 -------------------------------------------------------------------------------
 
